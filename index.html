@@ -1,0 +1,125 @@
+<html>
+<head>
+	<title>Demo: Example of how to implement 2D labels for 3D objects using Three.js</title>
+	<script src = "three.js"></script>
+	<script src = "OrbitControls.js"></script>
+</head>
+<body>
+
+	<script>
+	var camera, controls, scene, renderer;
+	var geometry, material, mesh;
+
+	var objects = [];
+
+	init();
+	animate();
+
+	function init() {
+		camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
+		camera.position.z = 1000;
+
+		controls = new THREE.OrbitControls( camera );
+		controls.autoRotate = true;
+		controls.userZoom = false;
+
+		scene = new THREE.Scene();
+
+		geometry = new THREE.CubeGeometry( 200, 200, 200 );
+		material = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true } );
+
+		// randomly create 10 cubes and their labels
+		for ( var i = 0; i < 10; i ++ ) {
+			objects[i] = new THREE.Mesh( geometry, material );
+			objects[i].position.x = ( Math.random() - 0.5 ) * 5000;
+			objects[i].position.y = ( Math.random() - 0.5 ) * 2500;
+			objects[i].position.z = ( Math.random() - 0.5 ) * 2500;
+
+			objects[i].domlabel = document.createElement( 'div' );
+			objects[i].domlabel.innerHTML = 'Object ' + i;
+			objects[i].domlabel.style.display = 'none';
+			objects[i].domlabel.style.position = 'absolute';
+			document.getElementsByTagName( 'body' )[0].appendChild( objects[i].domlabel );
+
+			scene.add( objects[i] );
+		}
+
+		renderer = new THREE.WebGLRenderer( { antialias: false } );
+		renderer.setSize( window.innerWidth, window.innerHeight );
+
+		document.body.appendChild( renderer.domElement );
+	}
+
+	function animate() {
+		requestAnimationFrame( animate );
+		controls.update();
+		update_labels();
+		renderer.render( scene, camera );
+	}
+
+	// update label positions in the loop
+	function update_labels() {
+
+		var x_min = 0;
+		var y_min = 0;
+
+		var x_max = window.innerWidth;
+		var y_max = window.innerHeight;
+
+		var x_mid = window.innerWidth / 2;
+		var y_mid = window.innerHeight / 2;
+
+		for ( var i = 0; i < objects.length; i ++ ) {
+			var pos = get_screen_xy( objects[i].position, camera );
+
+			// keep label within screen bounds
+			if ( pos.x < x_min ) pos.x = x_min;
+			if ( pos.y < y_min ) pos.y = y_min;
+
+			if ( pos.x > x_max ) pos.x = x_max;
+			if ( pos.y > y_max ) pos.y = y_max;
+
+			// TODO: Labels of objects behind the camera view should always be
+			// on the outside border. Need to figure this out.
+
+			// Determine if object is outside of view
+			// var frustum = new THREE.Frustum;
+			// frustum.setFromMatrix( new THREE.Matrix4().multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse ) );
+			// if( frustum.containsPoint( objects[i].position ) )
+
+			objects[i].domlabel.style.display = 'block';
+
+			if ( pos.x >= x_max ) {
+				objects[i].domlabel.style.left = '';
+				objects[i].domlabel.style.right = x_max - pos.x;
+			} else {
+				objects[i].domlabel.style.right = '';
+				objects[i].domlabel.style.left = pos.x;
+			}
+
+			if ( pos.y == y_max ) {
+				objects[i].domlabel.style.top = '';
+				objects[i].domlabel.style.bottom = y_max - pos.y;
+			} else {
+				objects[i].domlabel.style.bottom = '';
+				objects[i].domlabel.style.top = pos.y;
+			}
+		}
+
+	}
+
+	// Get the screen x,y coordinates of the 3D object
+	// https://github.com/mrdoob/three.js/issues/78#issuecomment-846917
+	function get_screen_xy( position, camera ) {
+		var pos = position.clone();
+		projScreenMat = new THREE.Matrix4();
+		projScreenMat.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
+		pos.applyProjection( projScreenMat );
+
+		return { x: ( pos.x + 1 ) * window.innerWidth / 2,
+			y: ( - pos.y + 1 ) * window.innerHeight / 2 };
+	}
+	</script>
+
+</body>
+</html>
